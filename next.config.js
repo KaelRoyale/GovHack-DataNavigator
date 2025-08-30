@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    appDir: true,
+    // Mark packages as external for server components
+    serverComponentsExternalPackages: ['jsdom']
   },
   images: {
     domains: ['www.google.com', 'abs.gov.au'],
@@ -14,6 +15,8 @@ const nextConfig = {
   output: 'standalone',
   // Optimize for Vercel
   poweredByHeader: false,
+  // Transpile packages that use modern JavaScript features
+  transpilePackages: ['jsdom']
 }
 
 module.exports = nextConfig

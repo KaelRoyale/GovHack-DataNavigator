@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { SearchResult, PaginationInfo } from '@/types/search'
-import { Globe, Database, ExternalLink, Calendar, User, Clock, FileText, Info, Tag, Shield, TrendingUp, FileText as ArticleIcon, X, Brain, Sparkles } from 'lucide-react'
+import { Globe, Database, ExternalLink, Calendar, User, Clock, FileText, Info, Tag, Shield, TrendingUp, FileText as ArticleIcon, X, Brain, Sparkles, Link } from 'lucide-react'
 import { useState as useReactState, useRef } from 'react'
 import Pagination from '@/components/pagination'
 

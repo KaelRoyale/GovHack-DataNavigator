@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { JSDOM } from 'jsdom'
-import * as cheerio from 'cheerio'
 
 // Data ingestion interfaces
 interface IngestionSource {
@@ -55,7 +54,7 @@ interface IngestedDataItem {
 interface IngestionJob {
   id: string
   sourceIds: string[]
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
   startedAt?: string
   completedAt?: string
   results: IngestionResult[]
@@ -360,7 +359,8 @@ async function ingestFromSource(source: IngestionSource): Promise<IngestionResul
     }
 
     const html = await response.text()
-    const $ = cheerio.load(html)
+    const dom = new JSDOM(html)
+    const $ = dom.window.document
 
     // Extract data based on selectors
     const items = await extractDataItems($, source, source.url)
@@ -379,21 +379,21 @@ async function ingestFromSource(source: IngestionSource): Promise<IngestionResul
   return result
 }
 
-async function extractDataItems($: cheerio.CheerioAPI, source: IngestionSource, baseUrl: string): Promise<IngestedDataItem[]> {
+async function extractDataItems(doc: Document, source: IngestionSource, baseUrl: string): Promise<IngestedDataItem[]> {
   const items: IngestedDataItem[] = []
   const selectors = source.selectors
 
   try {
     // Find all potential content containers
-    const containers = $('article, .content, .item, .entry, .post, .publication, .dataset')
+    const containers = doc.querySelectorAll('article, .content, .item, .entry, .post, .publication, .dataset')
     
     if (containers.length === 0) {
       // Fallback: look for any content with titles
-      const titles = $(selectors.title)
-      titles.each((index, element) => {
-        const title = $(element).text().trim()
+      const titles = doc.querySelectorAll(selectors.title)
+      titles.forEach(element => {
+        const title = element.textContent?.trim()
         if (title && title.length > 10) {
-          const item = createDataItem($, element, source, baseUrl, selectors)
+          const item = createDataItem(element, source, baseUrl, selectors)
           if (item) {
             items.push(item)
           }
@@ -401,8 +401,8 @@ async function extractDataItems($: cheerio.CheerioAPI, source: IngestionSource, 
       })
     } else {
       // Process structured containers
-      containers.each((index, container) => {
-        const item = createDataItem($, container, source, baseUrl, selectors)
+      containers.forEach(container => {
+        const item = createDataItem(container, source, baseUrl, selectors)
         if (item) {
           items.push(item)
         }
@@ -411,9 +411,9 @@ async function extractDataItems($: cheerio.CheerioAPI, source: IngestionSource, 
 
     // If no structured content found, try to extract from the main page
     if (items.length === 0) {
-      const mainContent = $('main, .main-content, #content, .content')
-      if (mainContent.length > 0) {
-        const item = createDataItem($, mainContent[0], source, baseUrl, selectors)
+      const mainContent = doc.querySelector('main, .main-content, #content, .content')
+      if (mainContent) {
+        const item = createDataItem(mainContent, source, baseUrl, selectors)
         if (item) {
           items.push(item)
         }
@@ -428,51 +428,50 @@ async function extractDataItems($: cheerio.CheerioAPI, source: IngestionSource, 
 }
 
 function createDataItem(
-  $: cheerio.CheerioAPI, 
-  element: cheerio.Element, 
+  element: Element, 
   source: IngestionSource, 
   baseUrl: string, 
   selectors: DataSelectors
 ): IngestedDataItem | null {
   try {
-    const $element = $(element)
+    const $element = element
     
     // Extract title
-    const titleElement = $element.find(selectors.title).first()
-    const title = titleElement.text().trim()
+    const titleElement = $element.querySelector(selectors.title)
+    const title = titleElement?.textContent?.trim()
     
     if (!title || title.length < 5) {
       return null
     }
 
     // Extract content
-    const contentElement = $element.find(selectors.content).first()
-    const content = contentElement.text().trim()
+    const contentElement = $element.querySelector(selectors.content)
+    const content = contentElement?.textContent?.trim()
 
     // Extract date
-    const dateElement = $element.find(selectors.date || '.date').first()
-    const date = dateElement.text().trim()
+    const dateElement = $element.querySelector(selectors.date || '.date')
+    const date = dateElement?.textContent?.trim()
 
     // Extract author
-    const authorElement = $element.find(selectors.author || '.author').first()
-    const author = authorElement.text().trim()
+    const authorElement = $element.querySelector(selectors.author || '.author')
+    const author = authorElement?.textContent?.trim()
 
     // Extract category
-    const categoryElement = $element.find(selectors.category || '.category').first()
-    const category = categoryElement.text().trim() || source.category
+    const categoryElement = $element.querySelector(selectors.category || '.category')
+    const category = categoryElement?.textContent?.trim() || source.category
 
     // Extract tags
-    const tagsElement = $element.find(selectors.tags || '.tags').first()
-    const tagsText = tagsElement.text().trim()
+    const tagsElement = $element.querySelector(selectors.tags || '.tags')
+    const tagsText = tagsElement?.textContent?.trim()
     const tags = tagsText ? tagsText.split(',').map(tag => tag.trim()) : []
 
     // Extract URL
-    const linkElement = $element.find('a').first()
-    const relativeUrl = linkElement.attr('href')
+    const linkElement = $element.querySelector('a')
+    const relativeUrl = linkElement?.getAttribute('href') || ''
     const url = relativeUrl ? new URL(relativeUrl, baseUrl).href : baseUrl
 
     // Create data asset metadata
-    const dataAsset = createDataAssetMetadata(source, title, content, url)
+    const dataAsset = createDataAssetMetadata(source, title, content || '', url)
 
     return {
       title,
@@ -575,7 +574,7 @@ function generateJobId(): string {
 }
 
 // Utility function to get ingestion statistics
-export function getIngestionStats() {
+function getIngestionStats() {
   const totalJobs = ingestionJobs.size
   const completedJobs = Array.from(ingestionJobs.values()).filter(job => job.status === 'completed').length
   const totalDataItems = Array.from(ingestedData.values()).reduce((sum, items) => sum + items.length, 0)

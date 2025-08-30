@@ -43,9 +43,12 @@ interface DatasetInfo {
 }
 
 export async function POST(request: NextRequest) {
+  let title = 'Unknown Dataset'
+  
   try {
     const body: DatasetInfoRequest = await request.json()
-    const { url, title } = body
+    const { url, title: requestTitle } = body
+    title = requestTitle || title
 
     if (!url) {
       return NextResponse.json(
@@ -60,8 +63,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      timeout: 10000
+      }
     })
 
     if (!response.ok) {
@@ -138,17 +140,16 @@ async function extractDatasetInfo(document: Document, url: string, title: string
   const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]')
   let structuredData: any = null
   
-  for (const script of jsonLdScripts) {
+  Array.from(jsonLdScripts).forEach(script => {
     try {
       const data = JSON.parse(script.textContent || '')
       if (data['@type'] === 'Dataset' || data['@type'] === 'DataCatalog' || data['@type'] === 'Article' || data['@type'] === 'WebPage') {
         structuredData = data
-        break
       }
     } catch (e) {
       // Ignore invalid JSON
     }
-  }
+  })
 
   // Extract text content for analysis - focus on main content areas
   const mainContent = extractMainContent(document)
@@ -159,7 +160,7 @@ async function extractDatasetInfo(document: Document, url: string, title: string
   const dataTypes = extractDataTypes(bodyText, structuredData, title)
   const keyTopics = extractKeyTopics(bodyText, title, url)
   const format = extractFormat(metaData, structuredData, bodyText, url)
-  const license = extractLicense(metaData, structuredData, bodyText, url)
+  const license = extractLicense(metaData, structuredData, bodyText)
   const department = extractDepartment(url, bodyText, title)
   const qualityScore = calculateQualityScore(metaData, structuredData, bodyText, url)
 
@@ -223,7 +224,8 @@ function extractMainContent(document: Document): string {
   
   // Fallback to first substantial paragraph
   const paragraphs = document.querySelectorAll('p')
-  for (const p of paragraphs) {
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i]
     if (p.textContent && p.textContent.length > 100) {
       return p.textContent
     }

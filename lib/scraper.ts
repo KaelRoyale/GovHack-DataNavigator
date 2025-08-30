@@ -11,6 +11,10 @@ export interface ScrapedContent {
     lastModified?: string
     language?: string
     type?: string
+    records?: number
+    columns?: number
+    structure?: string
+    recordCount?: number
   }
   links: string[]
   images: string[]
