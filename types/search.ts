@@ -90,6 +90,38 @@ export interface ContentAnalysisResponse {
     license: string
     tags: string[]
   }
+  dataGovernance?: {
+    dataAssets: {
+      description: string
+      collectionDate: string
+      purpose: string
+      departmentCatalogues: string[]
+      metadataAvailable: boolean
+      metadataDetails: string
+    }
+    dataAvailability: {
+      isReadilyAvailable: boolean
+      accessMethod: string
+      dataCustodian: string
+      requestRequired: boolean
+      requestProcess: string
+    }
+    dataAccess: {
+      downloadAvailable: boolean
+      apiAvailable: boolean
+      accessUrl: string
+      format: string[]
+      authenticationRequired: boolean
+    }
+    dataRelationships: {
+      isPartOfSeries: boolean
+      seriesName: string
+      relatedDatasets: string[]
+      dependencies: string[]
+      derivedFrom: string[]
+      usedToCreate: string[]
+    }
+  }
 }
 
 export interface PaginationInfo {

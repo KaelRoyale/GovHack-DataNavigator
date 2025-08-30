@@ -1,6 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ContentAnalysisRequest, ContentAnalysisResponse } from '@/types/search'
 
+// Enhanced data governance analysis interface
+interface DataGovernanceAnalysis {
+  dataAssets: {
+    description: string
+    collectionDate: string
+    purpose: string
+    departmentCatalogues: string[]
+    metadataAvailable: boolean
+    metadataDetails: string
+  }
+  dataAvailability: {
+    isReadilyAvailable: boolean
+    accessMethod: string
+    dataCustodian: string
+    requestRequired: boolean
+    requestProcess: string
+  }
+  dataAccess: {
+    downloadAvailable: boolean
+    apiAvailable: boolean
+    accessUrl: string
+    format: string[]
+    authenticationRequired: boolean
+  }
+  dataRelationships: {
+    isPartOfSeries: boolean
+    seriesName: string
+    relatedDatasets: string[]
+    dependencies: string[]
+    derivedFrom: string[]
+    usedToCreate: string[]
+  }
+}
+
 // Mock data for demonstration - in production, you'd use real APIs
 const mockAnalysisData = {
   'next.js': {
@@ -37,6 +71,106 @@ const mockAnalysisData = {
     dataTypes: ["Comparison", "Tutorial", "Code Examples"],
     qualityScore: 9,
     updateFrequency: "Annually"
+  }
+}
+
+// Enhanced data governance analysis mock data
+const mockDataGovernanceAnalysis: Record<string, DataGovernanceAnalysis> = {
+  'health': {
+    dataAssets: {
+      description: "Comprehensive health statistics including hospital admissions, mortality data, health surveys, and Medicare statistics covering population health indicators, healthcare utilization, and health outcomes across Australia.",
+      collectionDate: "2020-2024",
+      purpose: "Monitor population health trends, inform healthcare policy, support research and planning, and provide evidence for health service delivery improvements.",
+      departmentCatalogues: ["ABS Health Statistics Catalogue", "Department of Health Data Portal", "AIHW Health Data Repository"],
+      metadataAvailable: true,
+      metadataDetails: "Detailed metadata includes data definitions, collection methodology, quality indicators, and statistical classifications."
+    },
+    dataAvailability: {
+      isReadilyAvailable: true,
+      accessMethod: "Direct download and API access",
+      dataCustodian: "Australian Bureau of Statistics (ABS), Department of Health, Australian Institute of Health and Welfare (AIHW)",
+      requestRequired: false,
+      requestProcess: "No request required for public datasets. Special access may require approval for sensitive health data."
+    },
+    dataAccess: {
+      downloadAvailable: true,
+      apiAvailable: true,
+      accessUrl: "https://data.api.abs.gov.au/rest/data/HEALTH",
+      format: ["CSV", "JSON", "XML", "Excel"],
+      authenticationRequired: false
+    },
+    dataRelationships: {
+      isPartOfSeries: true,
+      seriesName: "Australian Health Statistics Series",
+      relatedDatasets: ["Hospital Statistics", "Causes of Death", "National Health Survey", "Medicare Statistics"],
+      dependencies: ["Population Estimates", "Geographic Classifications"],
+      derivedFrom: ["Hospital Administrative Data", "Death Registrations", "Survey Responses"],
+      usedToCreate: ["Health Performance Indicators", "Healthcare Planning Models", "Policy Impact Assessments"]
+    }
+  },
+  'population': {
+    dataAssets: {
+      description: "Population estimates and projections including demographic statistics, migration data, and population characteristics by age, sex, and geographic location.",
+      collectionDate: "2016-2024",
+      purpose: "Support planning and policy development, demographic analysis, and provide baseline data for other statistical collections.",
+      departmentCatalogues: ["ABS Population Statistics", "Department of Home Affairs Migration Data"],
+      metadataAvailable: true,
+      metadataDetails: "Comprehensive metadata covering estimation methodology, quality measures, and geographic classifications."
+    },
+    dataAvailability: {
+      isReadilyAvailable: true,
+      accessMethod: "Direct download and API access",
+      dataCustodian: "Australian Bureau of Statistics (ABS)",
+      requestRequired: false,
+      requestProcess: "Publicly available with no request required."
+    },
+    dataAccess: {
+      downloadAvailable: true,
+      apiAvailable: true,
+      accessUrl: "https://data.api.abs.gov.au/rest/data/POP",
+      format: ["CSV", "JSON", "Excel"],
+      authenticationRequired: false
+    },
+    dataRelationships: {
+      isPartOfSeries: true,
+      seriesName: "Australian Population Statistics",
+      relatedDatasets: ["Census Data", "Migration Statistics", "Demographic Projections"],
+      dependencies: ["Census Results", "Birth and Death Registrations"],
+      derivedFrom: ["Census Data", "Administrative Records", "Survey Data"],
+      usedToCreate: ["Health Statistics", "Economic Indicators", "Social Policy Analysis"]
+    }
+  },
+  'economic': {
+    dataAssets: {
+      description: "Economic indicators including Consumer Price Index, employment statistics, and economic performance metrics for monitoring economic trends and policy analysis.",
+      collectionDate: "2020-2024",
+      purpose: "Monitor economic performance, inform monetary policy, support business planning, and provide economic analysis for government decision-making.",
+      departmentCatalogues: ["ABS Economic Statistics", "Reserve Bank of Australia Data", "Treasury Economic Data"],
+      metadataAvailable: true,
+      metadataDetails: "Detailed methodology, quality indicators, and statistical classifications for economic measures."
+    },
+    dataAvailability: {
+      isReadilyAvailable: true,
+      accessMethod: "Direct download and API access",
+      dataCustodian: "Australian Bureau of Statistics (ABS), Reserve Bank of Australia (RBA)",
+      requestRequired: false,
+      requestProcess: "Publicly available with scheduled release dates."
+    },
+    dataAccess: {
+      downloadAvailable: true,
+      apiAvailable: true,
+      accessUrl: "https://data.api.abs.gov.au/rest/data/CPI",
+      format: ["CSV", "JSON", "Excel"],
+      authenticationRequired: false
+    },
+    dataRelationships: {
+      isPartOfSeries: true,
+      seriesName: "Australian Economic Indicators",
+      relatedDatasets: ["Labour Force Statistics", "National Accounts", "Business Indicators"],
+      dependencies: ["Price Collection Data", "Employment Surveys"],
+      derivedFrom: ["Price Surveys", "Business Surveys", "Administrative Data"],
+      usedToCreate: ["Economic Models", "Policy Analysis", "Business Intelligence"]
+    }
   }
 }
 
@@ -121,13 +255,17 @@ async function analyzeContent(scrapedContent: any, originalTitle: string, origin
   // Generate metadata
   const metadata = generateMetadataFromScraped(scrapedContent)
   
+  // Generate data governance analysis
+  const dataGovernance = generateDataGovernanceAnalysis(fullText, keyTopics)
+  
   return {
     summary,
     keyTopics,
     dataTypes,
     qualityScore,
     updateFrequency,
-    metadata
+    metadata,
+    dataGovernance
   }
 }
 
@@ -221,6 +359,56 @@ function generateSummary(scrapedContent: any, keyTopics: string[]): string {
   }
 }
 
+function generateDataGovernanceAnalysis(text: string, keyTopics: string[]): DataGovernanceAnalysis {
+  // Find matching data governance analysis based on keywords
+  let matchedAnalysis: DataGovernanceAnalysis | null = null
+  
+  for (const [keyword, analysis] of Object.entries(mockDataGovernanceAnalysis)) {
+    if (text.includes(keyword) || keyTopics.some(topic => topic.toLowerCase().includes(keyword))) {
+      matchedAnalysis = analysis
+      break
+    }
+  }
+  
+  // Default analysis if no match found
+  if (!matchedAnalysis) {
+    matchedAnalysis = {
+      dataAssets: {
+        description: "This dataset contains information that has been analyzed for content structure and metadata extraction. Specific details about data assets would require further investigation.",
+        collectionDate: "Unknown",
+        purpose: "Data analysis and content processing for information extraction and categorization.",
+        departmentCatalogues: ["General Data Catalogue"],
+        metadataAvailable: false,
+        metadataDetails: "Metadata availability unknown - would need to be verified with data custodian."
+      },
+      dataAvailability: {
+        isReadilyAvailable: false,
+        accessMethod: "Unknown",
+        dataCustodian: "Unknown",
+        requestRequired: true,
+        requestProcess: "Contact data custodian for access information and request procedures."
+      },
+      dataAccess: {
+        downloadAvailable: false,
+        apiAvailable: false,
+        accessUrl: "",
+        format: ["Unknown"],
+        authenticationRequired: true
+      },
+      dataRelationships: {
+        isPartOfSeries: false,
+        seriesName: "",
+        relatedDatasets: [],
+        dependencies: [],
+        derivedFrom: [],
+        usedToCreate: []
+      }
+    }
+  }
+  
+  return matchedAnalysis
+}
+
 function generateMetadataFromScraped(scrapedContent: any) {
   return {
     format: scrapedContent.metadata?.type || 'Web Content',
@@ -291,6 +479,9 @@ async function simulateContentAnalysis(url: string, title: string, content: stri
 
   // Generate metadata based on URL and content
   const metadata = generateMetadata(url, content)
+  
+  // Generate data governance analysis
+  const dataGovernance = generateDataGovernanceAnalysis(text, matchedAnalysis.keyTopics)
 
   return {
     summary: matchedAnalysis.summary,
@@ -298,7 +489,8 @@ async function simulateContentAnalysis(url: string, title: string, content: stri
     dataTypes: matchedAnalysis.dataTypes,
     qualityScore: matchedAnalysis.qualityScore,
     updateFrequency: matchedAnalysis.updateFrequency,
-    metadata
+    metadata,
+    dataGovernance
   }
 }
 

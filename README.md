@@ -28,6 +28,12 @@ A powerful search platform that combines web search with official Australian Bur
 - **Sentiment Analysis**: Understand the tone and context of content
 - **Confidence Scoring**: Reliability indicators for analysis results
 
+### **Data Governance Analysis**
+- **Comprehensive Data Asset Analysis**: Detailed descriptions of available data assets, collection dates, and purposes
+- **Data Availability Assessment**: Information about data custodians, access methods, and request processes
+- **Data Access Information**: Details about download availability, API access, and supported formats
+- **Data Relationship Mapping**: Analysis of dataset relationships, dependencies, and series information
+
 ## 🛠 Technology Stack
 
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
@@ -165,6 +171,7 @@ The application includes comprehensive test suites located in the `tests/` direc
 - **API Tests**: ABS API, data ingestion, TTS functionality
 - **Integration Tests**: Link validation, CORS functionality
 - **Frontend Tests**: CORS test page for browser testing
+- **Data Governance Tests**: Enhanced analysis for data assets, availability, access, and relationships
 
 ### Running Tests
 ```bash

@@ -97,6 +97,31 @@ const POPULAR_DATAFLOWS = {
     name: 'Labour Force, Australia',
     description: 'Employment and unemployment statistics',
     category: 'Economics'
+  },
+  'HEALTH': {
+    name: 'Health Statistics, Australia',
+    description: 'Health and medical statistics including hospital data, causes of death, and health surveys',
+    category: 'Health'
+  },
+  'HOSP': {
+    name: 'Hospital Statistics, Australia',
+    description: 'Hospital admissions, procedures, and healthcare statistics',
+    category: 'Health'
+  },
+  'DEATH': {
+    name: 'Causes of Death, Australia',
+    description: 'Mortality statistics and causes of death data',
+    category: 'Health'
+  },
+  'HEALTH_SURVEY': {
+    name: 'National Health Survey',
+    description: 'Health survey data including chronic conditions, risk factors, and health behaviors',
+    category: 'Health'
+  },
+  'MEDICARE': {
+    name: 'Medicare Statistics',
+    description: 'Medicare claims and healthcare utilization statistics',
+    category: 'Health'
   }
 }
 
@@ -190,16 +215,43 @@ export async function POST(request: NextRequest) {
     let allResults: ABSContentResult[] = []
 
     // If dataflowId is provided, fetch actual ABS data using proper API structure
-    if (dataflowId) {
+    if (dataflowId && dataflowId !== 'all') {
       const effectiveStartDate = startDate || startPeriod
       const effectiveEndDate = endDate || endPeriod
       const dataResults = await fetchABSData(dataflowId, dataKey, effectiveStartDate, effectiveEndDate, 'full', page)
       allResults.push(...dataResults)
     }
 
-    // Also perform content search for related ABS articles and publications
+    // Perform content search for related ABS articles and publications
+    // This will find relevant dataflows based on the search query
     const contentResults = await performContentFocusedABSSearch(searchQuery, category)
     allResults.push(...contentResults)
+
+    // If no specific dataflowId was provided but we found relevant dataflows,
+    // try to fetch some sample data from the most relevant dataflow
+    if (!dataflowId || dataflowId === 'all') {
+      const relevantDataflows = contentResults
+        .filter(result => result.type === 'content')
+        .slice(0, 2) // Take top 2 most relevant
+      
+      for (const result of relevantDataflows) {
+        // Extract dataflow ID from the link
+        const dataflowIdMatch = result.link.match(/statistics\/([^\/]+)/)
+        if (dataflowIdMatch) {
+          const extractedDataflowId = dataflowIdMatch[1].toUpperCase()
+          if (POPULAR_DATAFLOWS[extractedDataflowId as keyof typeof POPULAR_DATAFLOWS]) {
+            try {
+              const effectiveStartDate = startDate || startPeriod || '2020'
+              const effectiveEndDate = endDate || endPeriod || '2023'
+              const sampleData = await fetchABSData(extractedDataflowId, 'all', effectiveStartDate, effectiveEndDate, 'dataonly', 1)
+              allResults.push(...sampleData)
+            } catch (error) {
+              console.log(`Could not fetch sample data for ${extractedDataflowId}:`, error)
+            }
+          }
+        }
+      }
+    }
 
     // Apply geographic filtering if specified
     if (geography) {
@@ -417,13 +469,69 @@ async function performContentFocusedABSSearch(query: string, category?: string):
   try {
     console.log(`Performing content search for: ${query}`)
     
-    // This would typically search ABS website content
-    // For now, return mock results based on popular dataflows
     const results: ABSContentResult[] = []
+    const queryLower = query.toLowerCase()
     
+    // Define keyword mappings for better search matching
+    const keywordMappings: Record<string, string[]> = {
+      'health': ['HEALTH', 'HOSP', 'DEATH', 'HEALTH_SURVEY', 'MEDICARE'],
+      'hospital': ['HOSP', 'HEALTH', 'MEDICARE'],
+      'medical': ['HEALTH', 'HOSP', 'MEDICARE', 'HEALTH_SURVEY'],
+      'death': ['DEATH', 'HEALTH'],
+      'population': ['POP'],
+      'employment': ['LFS'],
+      'job': ['LFS'],
+      'unemployment': ['LFS'],
+      'alcohol': ['ALC'],
+      'drinking': ['ALC'],
+      'housing': ['RES_DWELL'],
+      'house': ['RES_DWELL'],
+      'dwelling': ['RES_DWELL'],
+      'inflation': ['CPI'],
+      'price': ['CPI'],
+      'consumer': ['CPI'],
+      'economic': ['CPI', 'LFS'],
+      'economy': ['CPI', 'LFS']
+    }
+    
+    // Find matching dataflows based on keywords
+    const matchingDataflows = new Set<string>()
+    
+    // Direct keyword matching
+    for (const [keyword, dataflowIds] of Object.entries(keywordMappings)) {
+      if (queryLower.includes(keyword)) {
+        dataflowIds.forEach(id => matchingDataflows.add(id))
+      }
+    }
+    
+    // Direct dataflow ID matching
     for (const [id, dataflow] of Object.entries(POPULAR_DATAFLOWS)) {
-      if (query.toLowerCase().includes(id.toLowerCase()) || 
-          dataflow.name.toLowerCase().includes(query.toLowerCase())) {
+      if (queryLower.includes(id.toLowerCase())) {
+        matchingDataflows.add(id)
+      }
+    }
+    
+    // Description and name matching
+    for (const [id, dataflow] of Object.entries(POPULAR_DATAFLOWS)) {
+      if (dataflow.name.toLowerCase().includes(queryLower) || 
+          dataflow.description.toLowerCase().includes(queryLower) ||
+          dataflow.category.toLowerCase().includes(queryLower)) {
+        matchingDataflows.add(id)
+      }
+    }
+    
+    // If no matches found, provide general health-related results for health queries
+    if (matchingDataflows.size === 0 && queryLower.includes('health')) {
+      matchingDataflows.add('HEALTH')
+      matchingDataflows.add('HOSP')
+      matchingDataflows.add('HEALTH_SURVEY')
+    }
+    
+    // Create results for matching dataflows
+    for (const id of matchingDataflows) {
+      const dataflow = POPULAR_DATAFLOWS[id as keyof typeof POPULAR_DATAFLOWS]
+      if (dataflow) {
+        const relevanceScore = calculateRelevanceScore(queryLower, dataflow, id)
         results.push({
           title: dataflow.name,
           link: `${ABS_WEBSITE_BASE}/statistics/${id.toLowerCase()}`,
@@ -432,16 +540,44 @@ async function performContentFocusedABSSearch(query: string, category?: string):
           formattedUrl: `${ABS_WEBSITE_BASE}/statistics/${id.toLowerCase()}`,
           htmlSnippet: `Official ABS statistics: ${dataflow.description}`,
           type: 'content',
-          relevanceScore: 0.9
+          relevanceScore
         })
       }
     }
     
+    console.log(`Found ${results.length} matching dataflows for query: ${query}`)
     return results
   } catch (error) {
     console.error('Error in content search:', error)
     return []
   }
+}
+
+// Calculate relevance score based on query and dataflow
+function calculateRelevanceScore(query: string, dataflow: any, dataflowId: string): number {
+  let score = 0.5 // Base score
+  
+  // Exact ID match gets highest score
+  if (query.includes(dataflowId.toLowerCase())) {
+    score += 0.4
+  }
+  
+  // Name match gets high score
+  if (dataflow.name.toLowerCase().includes(query)) {
+    score += 0.3
+  }
+  
+  // Description match gets medium score
+  if (dataflow.description.toLowerCase().includes(query)) {
+    score += 0.2
+  }
+  
+  // Category match gets lower score
+  if (dataflow.category.toLowerCase().includes(query)) {
+    score += 0.1
+  }
+  
+  return Math.min(score, 1.0) // Cap at 1.0
 }
 
 // Helper functions for dataflow information

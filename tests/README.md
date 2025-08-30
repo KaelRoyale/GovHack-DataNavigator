@@ -27,6 +27,16 @@ This directory contains all test files for the DataLandscape application.
   - Tests audio generation
   - Run with: `node tests/test-tts.js`
 
+- **`test-health-search.js`** - Tests health keyword search functionality
+  - Tests health-related keyword searches (health, hospital, medical)
+  - Tests relevance scoring and result ranking
+  - Run with: `node tests/test-health-search.js`
+
+- **`test-data-governance-analysis.js`** - Tests enhanced data governance analysis
+  - Tests structured analysis for data assets, availability, access, and relationships
+  - Tests comprehensive answers to data governance questions
+  - Run with: `node tests/test-data-governance-analysis.js`
+
 ### Integration Tests
 
 - **`test-abs-links.js`** - Tests ABS link validation and processing
@@ -61,6 +71,12 @@ node tests/test-enhanced-abs-api.js
 
 # Test TTS functionality
 node tests/test-tts.js
+
+# Test health keyword search
+node tests/test-health-search.js
+
+# Test data governance analysis
+node tests/test-data-governance-analysis.js
 
 # Test ABS links
 node tests/test-abs-links.js
