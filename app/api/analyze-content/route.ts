@@ -305,12 +305,12 @@ async function simulateContentAnalysis(url: string, title: string, content: stri
 // Real implementation would use these APIs:
 /*
 async function scrapeWebContent(url: string) {
-  // Use libraries like Puppeteer, Playwright, or Cheerio
-  // Example with fetch for simple cases:
+  Use libraries like Puppeteer, Playwright, or Cheerio
+  Example with fetch for simple cases:
   const response = await fetch(url)
   const html = await response.text()
   
-  // Extract text content, metadata, etc.
+  Extract text content, metadata, etc.
   return {
     title: extractTitle(html),
     content: extractContent(html),
@@ -319,7 +319,7 @@ async function scrapeWebContent(url: string) {
 }
 
 async function analyzeWithAI(content: string) {
-  // Use OpenAI, Claude, or other AI APIs
+  Use OpenAI, Claude, or other AI APIs
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {

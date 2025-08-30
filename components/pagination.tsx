@@ -17,29 +17,50 @@ export default function Pagination({ pagination, onPageChange, isLoading = false
   }
 
   const getVisiblePages = () => {
-    const delta = 2 // Number of pages to show on each side of current page
-    const range = []
-    const rangeWithDots = []
+    const pages = []
+    const maxVisible = 7
+    const halfVisible = Math.floor(maxVisible / 2)
 
-    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-      range.push(i)
-    }
-
-    if (currentPage - delta > 2) {
-      rangeWithDots.push(1, '...')
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
     } else {
-      rangeWithDots.push(1)
+      // Show pages around current page
+      let start = Math.max(1, currentPage - halfVisible)
+      let end = Math.min(totalPages, currentPage + halfVisible)
+
+      // Adjust if we're near the edges
+      if (currentPage <= halfVisible + 1) {
+        end = maxVisible
+      } else if (currentPage >= totalPages - halfVisible) {
+        start = totalPages - maxVisible + 1
+      }
+
+      // Add first page and ellipsis if needed
+      if (start > 1) {
+        pages.push(1)
+        if (start > 2) {
+          pages.push('...')
+        }
+      }
+
+      // Add visible pages
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+
+      // Add last page and ellipsis if needed
+      if (end < totalPages) {
+        if (end < totalPages - 1) {
+          pages.push('...')
+        }
+        pages.push(totalPages)
+      }
     }
 
-    rangeWithDots.push(...range)
-
-    if (currentPage + delta < totalPages - 1) {
-      rangeWithDots.push('...', totalPages)
-    } else {
-      rangeWithDots.push(totalPages)
-    }
-
-    return rangeWithDots
+    return pages
   }
 
   const handlePageClick = (page: number) => {

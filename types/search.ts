@@ -1,8 +1,3 @@
-export interface SearchRequest {
-  query: string
-  page?: number
-}
-
 export interface SearchResult {
   title: string
   link: string
@@ -12,16 +7,17 @@ export interface SearchResult {
   htmlSnippet: string
   pagemap?: {
     metatags?: Array<{
+      'og:title'?: string
+      'og:description'?: string
+      'og:image'?: string
       'article:published_time'?: string
       'article:author'?: string
-      'og:image'?: string
-      'og:updated_time'?: string
-      'og:author'?: string
     }>
     cse_image?: Array<{
       src: string
     }>
   }
+  // Enhanced data asset information
   dataAsset?: {
     description?: string
     collectionDate?: string
@@ -59,26 +55,18 @@ export interface SearchResult {
   }
 }
 
-export interface SearchInformation {
-  totalResults: string
-  searchTime: number
-}
-
-export interface PaginationInfo {
-  currentPage: number
-  totalPages: number
-  totalResults: number
-  resultsPerPage: number
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  startIndex: number
-  endIndex: number
-}
-
 export interface SearchResponse {
   items: SearchResult[]
-  searchInformation: SearchInformation
-  pagination: PaginationInfo
+  searchInformation: {
+    totalResults: string
+    searchTime: number
+  }
+}
+
+export interface SearchRequest {
+  query: string
+  startDate?: string
+  endDate?: string
 }
 
 export interface ContentAnalysisRequest {
@@ -88,9 +76,28 @@ export interface ContentAnalysisRequest {
 }
 
 export interface ContentAnalysisResponse {
-  summary?: string
-  keyTopics?: string[]
-  dataTypes?: string[]
-  qualityScore?: number
-  updateFrequency?: string
+  summary: string
+  keyTopics: string[]
+  dataTypes: string[]
+  qualityScore: number
+  updateFrequency: string
+  metadata: {
+    format: string
+    size: string
+    records: number
+    lastUpdated: string
+    version: string
+    license: string
+    tags: string[]
+  }
+}
+
+export interface PaginationInfo {
+  currentPage: number
+  totalPages: number
+  totalResults: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  startIndex: number
+  endIndex: number
 }
