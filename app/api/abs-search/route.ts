@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const ABS_BASE_URL = 'https://api.data.abs.gov.au'
+const ABS_BASE_URL = 'https://data.api.abs.gov.au'
 const ABS_WEBSITE_BASE = 'https://www.abs.gov.au'
+
+// Enhanced interfaces based on ABS API documentation
+interface ABSDataStructure {
+  id: string
+  name: string
+  dimensions: ABSDimension[]
+  attributes: ABSAttribute[]
+}
+
+interface ABSDimension {
+  id: string
+  name: string
+  position: number
+  codelist: ABSCodelist
+}
+
+interface ABSCodelist {
+  id: string
+  codes: ABSCode[]
+}
+
+interface ABSCode {
+  id: string
+  name: string
+  description?: string
+}
+
+interface ABSAttribute {
+  id: string
+  name: string
+  codelist?: ABSCodelist
+}
+
+interface QueryFilters {
+  dimensions: Record<string, string | string[]>
+  startPeriod?: string
+  endPeriod?: string
+  detail?: 'full' | 'dataonly' | 'serieskeysonly'
+  firstNObservations?: number
+  lastNObservations?: number
+}
 
 interface ABSDataflow {
   id: string
@@ -208,36 +249,52 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     
     if (type === 'dataflows') {
-      // Get available dataflows using the correct endpoint
-      const response = await fetch(`${ABS_BASE_URL}/dataflow/ABS`, {
-        headers: {
-          'Accept': 'application/vnd.sdmx.structure+json',
-          'User-Agent': 'DataLandscape-Search/1.0'
-        }
-      })
-
-      if (!response.ok) {
-        console.error('ABS API error:', response.status, response.statusText)
-        // Return enhanced default dataflows if API fails
-        const defaultDataflows: ABSDataflow[] = [
-          { id: 'CPI', name: 'Consumer Price Index', version: '1.0.0', category: 'Economics' },
-          { id: 'POP', name: 'Population Estimates', version: '1.0.0', category: 'Demographics' },
-          { id: 'LFS', name: 'Labour Force Survey', version: '1.0.0', category: 'Economics' },
-          { id: 'GDP', name: 'Gross Domestic Product', version: '1.0.0', category: 'Economics' },
-          { id: 'ALC', name: 'Apparent Consumption of Alcohol', version: '1.0.0', category: 'Social' },
-          { id: 'EDU', name: 'Education Statistics', version: '1.0.0', category: 'Social' },
-          { id: 'HEALTH', name: 'Health Statistics', version: '1.0.0', category: 'Social' },
-          { id: 'MANUFACTURING', name: 'Manufacturing Statistics', version: '1.0.0', category: 'Industry' }
-        ]
-        return NextResponse.json({ dataflows: defaultDataflows })
+      // Enhanced dataflow discovery using ABS API
+      const dataflows = await discoverDataflows()
+      return NextResponse.json({ dataflows })
+    }
+    
+    if (type === 'datastructure') {
+      const dataflowId = searchParams.get('dataflowId')
+      if (!dataflowId) {
+        return NextResponse.json({ error: 'dataflowId is required' }, { status: 400 })
       }
-
-      const data = await response.json()
       
-      // Process and enhance dataflows with categories
-      const enhancedDataflows = processDataflows(data)
+      const dataStructure = await getDataStructure(dataflowId)
+      return NextResponse.json({ dataStructure })
+    }
+    
+    if (type === 'codelist') {
+      const codelistId = searchParams.get('codelistId')
+      if (!codelistId) {
+        return NextResponse.json({ error: 'codelistId is required' }, { status: 400 })
+      }
       
-      return NextResponse.json({ dataflows: enhancedDataflows })
+      const codelist = await getCodelist(codelistId)
+      return NextResponse.json({ codelist })
+    }
+    
+    if (type === 'examples') {
+      // Return example queries based on ABS documentation
+      const examples = getExampleQueries()
+      return NextResponse.json({ examples })
+    }
+    
+    if (type === 'advanced-query') {
+      const dataflowId = searchParams.get('dataflowId')
+      const filters = searchParams.get('filters')
+      
+      if (!dataflowId) {
+        return NextResponse.json({ error: 'dataflowId is required' }, { status: 400 })
+      }
+      
+      try {
+        const parsedFilters: QueryFilters = filters ? JSON.parse(filters) : { dimensions: {} }
+        const queryUrl = buildAdvancedQuery(dataflowId, parsedFilters)
+        return NextResponse.json({ queryUrl, dataflowId, filters: parsedFilters })
+      } catch (error) {
+        return NextResponse.json({ error: 'Invalid filters format' }, { status: 400 })
+      }
     }
     
     if (type === 'categories') {
@@ -794,20 +851,28 @@ async function fetchABSData(dataflowId: string, dataKey?: string, startPeriod?: 
     try {
       const date = new Date(datetimeString)
       const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
       
-      // Determine period format based on dataflow
-      if (dataflowId === 'CPI') {
-        // CPI uses quarterly format: YYYY-Qx
-        const quarter = Math.ceil((date.getMonth() + 1) / 3)
-        return `${year}-Q${quarter}`
-      } else if (dataflowId === 'POP') {
-        // Population uses annual format: YYYY
-        return `${year}`
-      } else {
-        // Default to monthly format: YYYY-MM
-        return `${year}-${month}`
+      // Enhanced period format handling based on ABS documentation
+      switch (dataflowId) {
+        case 'CPI':
+        case 'GDP':
+          // Quarterly format: YYYY-Qx
+          const quarter = Math.ceil((date.getMonth() + 1) / 3)
+          return `${year}-Q${quarter}`
+        case 'POP':
+          // Annual format: YYYY
+          return `${year}`
+        case 'ALC':
+          // Annual format for alcohol consumption
+          return `${year}`
+        case 'RES_DWELL':
+          // Quarterly format for residential dwellings
+          const q = Math.ceil((date.getMonth() + 1) / 3)
+          return `${year}-Q${q}`
+        default:
+          // Default to monthly format: YYYY-MM
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          return `${year}-${month}`
       }
     } catch (error) {
       console.error('Error converting datetime:', error)
@@ -816,15 +881,18 @@ async function fetchABSData(dataflowId: string, dataKey?: string, startPeriod?: 
   }
 
   try {
-    // Build the ABS API URL
-    let absUrl = `${ABS_BASE_URL}/data/ABS/${dataflowId}`
+    // Build the enhanced ABS API URL based on official documentation
+    let absUrl = `${ABS_BASE_URL}/rest/data/ABS,${dataflowId}`
     
-    // Add data key if specified
+    // Handle dataKey with enhanced logic
     if (dataKey && dataKey !== 'all') {
       absUrl += `/${dataKey}`
+    } else {
+      // Use 'all' for complete dataset as per ABS documentation
+      absUrl += '/all'
     }
     
-    // Add period parameters
+    // Add enhanced query parameters
     const params = new URLSearchParams()
     if (startPeriod) {
       params.append('startPeriod', convertToABSPeriod(startPeriod))
@@ -836,11 +904,16 @@ async function fetchABSData(dataflowId: string, dataKey?: string, startPeriod?: 
       params.append('detail', detail)
     }
     
+    // Add observation limits for performance
+    if (page && page > 1) {
+      params.append('firstNObservations', '10')
+    }
+    
     if (params.toString()) {
       absUrl += `?${params.toString()}`
     }
     
-    console.log('ABS API URL:', absUrl)
+    console.log('Enhanced ABS API URL:', absUrl)
     
     const response = await fetch(absUrl, {
       headers: {
@@ -851,7 +924,7 @@ async function fetchABSData(dataflowId: string, dataKey?: string, startPeriod?: 
     
     if (!response.ok) {
       console.error('ABS API error:', response.status, response.statusText)
-      // Return mock data for demonstration
+      // Return enhanced mock data for demonstration
       return generateEnhancedMockABSData(dataflowId, dataKey, startPeriod, endPeriod)
     }
     
@@ -860,7 +933,7 @@ async function fetchABSData(dataflowId: string, dataKey?: string, startPeriod?: 
     
   } catch (error) {
     console.error('Error fetching ABS data:', error)
-    // Return mock data for demonstration
+    // Return enhanced mock data for demonstration
     return generateEnhancedMockABSData(dataflowId, dataKey, startPeriod, endPeriod)
   }
 }
@@ -1002,6 +1075,87 @@ function generateUniqueContentLink(baseUrl: string, title: string, strategy: str
   }
 }
 
+// Advanced query building functions based on ABS API documentation
+function buildAdvancedQuery(dataflowId: string, filters: QueryFilters): string {
+  const baseUrl = `${ABS_BASE_URL}/rest/data/ABS,${dataflowId}`
+  
+  // Build dataKey with OR operators and wildcards
+  const dataKey = buildDataKeyWithAdvancedFeatures(filters.dimensions)
+  
+  // Add query parameters
+  const params = new URLSearchParams()
+  if (filters.startPeriod) {
+    params.append('startPeriod', filters.startPeriod)
+  }
+  if (filters.endPeriod) {
+    params.append('endPeriod', filters.endPeriod)
+  }
+  if (filters.detail) {
+    params.append('detail', filters.detail)
+  }
+  if (filters.firstNObservations) {
+    params.append('firstNObservations', filters.firstNObservations.toString())
+  }
+  if (filters.lastNObservations) {
+    params.append('lastNObservations', filters.lastNObservations.toString())
+  }
+  
+  return `${baseUrl}/${dataKey}?${params.toString()}`
+}
+
+function buildDataKeyWithAdvancedFeatures(dimensions: Record<string, string | string[]>): string {
+  const dimensionValues: string[] = []
+  
+  // Process each dimension
+  Object.entries(dimensions).forEach(([dimId, value]) => {
+    if (Array.isArray(value)) {
+      // Use OR operator with "+" for multiple values
+      dimensionValues.push(value.join('+'))
+    } else if (value === '' || value === 'all') {
+      // Use wildcard for all values
+      dimensionValues.push('')
+    } else {
+      // Single value
+      dimensionValues.push(value)
+    }
+  })
+  
+  return dimensionValues.join('.')
+}
+
+// Enhanced data fetching with advanced features
+async function fetchABSDataAdvanced(dataflowId: string, filters: QueryFilters, format: 'json' | 'csv' = 'json'): Promise<any> {
+  const url = buildAdvancedQuery(dataflowId, filters)
+  
+  const headers = {
+    'Accept': format === 'csv' 
+      ? 'application/vnd.sdmx.data+csv;file=true'
+      : 'application/vnd.sdmx.data+json',
+    'User-Agent': 'DataLandscape-Search/1.0'
+  }
+  
+  console.log('Advanced ABS API URL:', url)
+  
+  const response = await fetch(url, { headers })
+  
+  if (!response.ok) {
+    throw new Error(`ABS API error: ${response.status} ${response.statusText}`)
+  }
+  
+  return format === 'csv' ? response.text() : response.json()
+}
+
+// Example queries based on ABS documentation
+function getExampleQueries(): Record<string, string> {
+  return {
+    'ALC_2008': 'https://data.api.abs.gov.au/rest/data/ALC/1.2.1.4.A?startPeriod=2008&endPeriod=2008',
+    'RES_DWELL_SYDNEY_NSW': 'https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/1.1GSYD+1RNSW.Q?detail=Full&startPeriod=2019-Q4&endPeriod=2020-Q1',
+    'CPI_MULTIPLE_MEASURES': 'https://data.api.abs.gov.au/rest/data/ABS,CPI,1.1.0/1+2+3.10001.10.50.Q?startPeriod=2010-Q1&firstNObservations=10',
+    'RES_DWELL_ALL_REGIONS': 'https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/1..Q?startPeriod=2019-Q4&endPeriod=2020-Q1',
+    'RES_DWELL_ALL_DATA': 'https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all?startPeriod=2019-Q4&endPeriod=2020-Q1'
+  }
+}
+
 function transformEnhancedABSData(data: any, dataflowId: string): ABSContentResult[] {
   const dataAsset = getEnhancedDataAssetInfo(dataflowId)
   const results: ABSContentResult[] = []
@@ -1048,6 +1202,203 @@ function transformEnhancedABSData(data: any, dataflowId: string): ABSContentResu
   return results
 }
 
+// Enhanced ABS API functions based on official documentation
+async function discoverDataflows(): Promise<ABSDataflow[]> {
+  try {
+    const response = await fetch(`${ABS_BASE_URL}/rest/dataflow/ABS`, {
+      headers: {
+        'Accept': 'application/vnd.sdmx.structure+json',
+        'User-Agent': 'DataLandscape-Search/1.0'
+      }
+    })
+
+    if (!response.ok) {
+      console.error('ABS API error:', response.status, response.statusText)
+      // Return enhanced default dataflows if API fails
+      return getDefaultDataflows()
+    }
+
+    const data = await response.json()
+    return processEnhancedDataflows(data)
+  } catch (error) {
+    console.error('Error discovering dataflows:', error)
+    return getDefaultDataflows()
+  }
+}
+
+async function getDataStructure(dataflowId: string): Promise<ABSDataStructure | null> {
+  try {
+    const response = await fetch(`${ABS_BASE_URL}/rest/datastructure/ABS/${dataflowId}?references=children`, {
+      headers: {
+        'Accept': 'application/vnd.sdmx.structure+json',
+        'User-Agent': 'DataLandscape-Search/1.0'
+      }
+    })
+
+    if (!response.ok) {
+      console.error('ABS API error:', response.status, response.statusText)
+      return null
+    }
+
+    const data = await response.json()
+    return parseDataStructure(data)
+  } catch (error) {
+    console.error('Error getting data structure:', error)
+    return null
+  }
+}
+
+async function getCodelist(codelistId: string): Promise<ABSCodelist | null> {
+  try {
+    const response = await fetch(`${ABS_BASE_URL}/rest/codelist/ABS/${codelistId}`, {
+      headers: {
+        'Accept': 'application/vnd.sdmx.structure+json',
+        'User-Agent': 'DataLandscape-Search/1.0'
+      }
+    })
+
+    if (!response.ok) {
+      console.error('ABS API error:', response.status, response.statusText)
+      return null
+    }
+
+    const data = await response.json()
+    return parseCodelist(data)
+  } catch (error) {
+    console.error('Error getting codelist:', error)
+    return null
+  }
+}
+
+function getDefaultDataflows(): ABSDataflow[] {
+  return [
+    { id: 'CPI', name: 'Consumer Price Index', version: '1.0.0', category: 'Economics' },
+    { id: 'POP', name: 'Population Estimates', version: '1.0.0', category: 'Demographics' },
+    { id: 'LFS', name: 'Labour Force Survey', version: '1.0.0', category: 'Economics' },
+    { id: 'GDP', name: 'Gross Domestic Product', version: '1.0.0', category: 'Economics' },
+    { id: 'ALC', name: 'Apparent Consumption of Alcohol', version: '1.0.0', category: 'Social' },
+    { id: 'RES_DWELL', name: 'Residential Dwellings', version: '1.0.0', category: 'Housing' },
+    { id: 'EDU', name: 'Education Statistics', version: '1.0.0', category: 'Social' },
+    { id: 'HEALTH', name: 'Health Statistics', version: '1.0.0', category: 'Social' },
+    { id: 'MANUFACTURING', name: 'Manufacturing Statistics', version: '1.0.0', category: 'Industry' }
+  ]
+}
+
+function processEnhancedDataflows(data: any): ABSDataflow[] {
+  try {
+    if (data.dataflows) {
+      return data.dataflows.map((dataflow: any) => ({
+        id: dataflow.id,
+        name: dataflow.name || dataflow.id,
+        description: dataflow.description,
+        version: dataflow.version || '1.0.0',
+        category: categorizeDataflow(dataflow.id, dataflow.name)
+      }))
+    }
+    return []
+  } catch (error) {
+    console.error('Error processing enhanced dataflows:', error)
+    return []
+  }
+}
+
+function categorizeDataflow(id: string, name: string): string {
+  const nameLower = name.toLowerCase()
+  const idLower = id.toLowerCase()
+  
+  // Enhanced categorization based on ABS documentation
+  if (nameLower.includes('price') || nameLower.includes('inflation') || idLower === 'cpi') {
+    return 'Economics'
+  }
+  if (nameLower.includes('population') || nameLower.includes('demographic') || idLower === 'pop') {
+    return 'Demographics'
+  }
+  if (nameLower.includes('labour') || nameLower.includes('employment') || idLower === 'lfs') {
+    return 'Economics'
+  }
+  if (nameLower.includes('gdp') || nameLower.includes('gross domestic') || idLower === 'gdp') {
+    return 'Economics'
+  }
+  if (nameLower.includes('alcohol') || nameLower.includes('consumption') || idLower === 'alc') {
+    return 'Social'
+  }
+  if (nameLower.includes('dwelling') || nameLower.includes('housing') || idLower === 'res_dwell') {
+    return 'Housing'
+  }
+  if (nameLower.includes('education') || nameLower.includes('school') || idLower === 'edu') {
+    return 'Social'
+  }
+  if (nameLower.includes('health') || nameLower.includes('medical') || idLower === 'health') {
+    return 'Social'
+  }
+  if (nameLower.includes('manufacturing') || nameLower.includes('industry') || idLower === 'manufacturing') {
+    return 'Industry'
+  }
+  
+  return 'General'
+}
+
+function parseDataStructure(data: any): ABSDataStructure | null {
+  try {
+    if (data.dataStructures && data.dataStructures[0]) {
+      const ds = data.dataStructures[0]
+      return {
+        id: ds.id,
+        name: ds.name,
+        dimensions: parseDimensions(ds.dataStructureComponents?.dimensionList?.dimension || []),
+        attributes: parseAttributes(ds.dataStructureComponents?.attributeList?.attribute || [])
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('Error parsing data structure:', error)
+    return null
+  }
+}
+
+function parseDimensions(dimensions: any[]): ABSDimension[] {
+  return dimensions.map((dim, index) => ({
+    id: dim.id,
+    name: dim.localRepresentation?.enumeration?.id || dim.id,
+    position: index + 1,
+    codelist: {
+      id: dim.localRepresentation?.enumeration?.id || dim.id,
+      codes: []
+    }
+  }))
+}
+
+function parseAttributes(attributes: any[]): ABSAttribute[] {
+  return attributes.map(attr => ({
+    id: attr.id,
+    name: attr.localRepresentation?.enumeration?.id || attr.id,
+    codelist: attr.localRepresentation?.enumeration ? {
+      id: attr.localRepresentation.enumeration.id,
+      codes: []
+    } : undefined
+  }))
+}
+
+function parseCodelist(data: any): ABSCodelist | null {
+  try {
+    if (data.codelists && data.codelists[0]) {
+      const cl = data.codelists[0]
+      return {
+        id: cl.id,
+        codes: cl.code?.map((code: any) => ({
+          id: code.id,
+          name: code.name,
+          description: code.description
+        })) || []
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('Error parsing codelist:', error)
+    return null
+  }
+}
+
 function getEnhancedDataAssetInfo(dataflowId: string) {
   const dataflowInfo = {
     CPI: {
@@ -1081,6 +1432,22 @@ function getEnhancedDataAssetInfo(dataflowId: string) {
       updateFrequency: 'Quarterly',
       unit: 'Billion AUD',
       tags: ['gdp', 'economics', 'growth', 'production']
+    },
+    ALC: {
+      name: 'Apparent Consumption of Alcohol',
+      description: 'Measures the apparent consumption of alcohol in Australia',
+      purpose: 'Alcohol consumption analysis and policy',
+      updateFrequency: 'Annual',
+      unit: 'Litres per capita',
+      tags: ['alcohol', 'consumption', 'social', 'health']
+    },
+    RES_DWELL: {
+      name: 'Residential Dwellings',
+      description: 'Statistics on residential dwellings and housing',
+      purpose: 'Housing market analysis and planning',
+      updateFrequency: 'Quarterly',
+      unit: 'Number of dwellings',
+      tags: ['housing', 'dwellings', 'real estate', 'construction']
     }
   }
   

@@ -254,7 +254,7 @@ export default function UnifiedSearch({ onSearch, isLoading }: UnifiedSearchProp
                   ) : (
                     <>
                       <Search className="w-4 h-4" />
-                      Search Web
+                      Start searching
                     </>
                   )}
                 </button>

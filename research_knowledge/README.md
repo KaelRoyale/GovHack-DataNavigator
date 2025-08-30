@@ -9,6 +9,7 @@ This folder contains comprehensive research documentation and integration guides
 - **[ABS Integration Summary](./ABS_INTEGRATION_SUMMARY.md)** - High-level summary of ABS integration project
 - **[ABS Library Integration Guide](./ABS_LIBRARY_INTEGRATION_GUIDE.md)** - Comprehensive developer guide for ABS search functionality
 - **[ABS API Integration](./ABS_API_INTEGRATION.md)** - Technical details of ABS API integration
+- **[ABS API Enhanced Integration](./ABS_API_ENHANCED_INTEGRATION.md)** - Enhanced integration based on official ABS Data API documentation
 
 ### AI and Machine Learning
 - **[Gemini AI Setup](./GEMINI_AI_SETUP.md)** - Configuration and setup guide for Google Gemini AI integration
@@ -16,6 +17,9 @@ This folder contains comprehensive research documentation and integration guides
 
 ### Data Asset Management
 - **[Data Asset Features](./DATA_ASSET_FEATURES.md)** - Comprehensive guide to data asset features and metadata
+
+### Data Ingestion Pipeline
+- **[Data Ingestion Pipeline](./DATA_INGESTION_PIPELINE.md)** - Comprehensive system for gathering data from various websites and data sources
 
 ## 🎯 Quick Navigation
 
@@ -37,6 +41,7 @@ This folder contains comprehensive research documentation and integration guides
 The DataLandscape project integrates multiple data sources and AI capabilities:
 
 - **ABS Data Integration**: Comprehensive search and data retrieval from Australian Bureau of Statistics
+- **Data Ingestion Pipeline**: Automated data gathering from various websites and data sources
 - **AI-Powered Analysis**: Google Gemini AI for content analysis and insights
 - **Text-to-Speech**: Audio output capabilities for accessibility
 - **Data Asset Management**: Structured metadata and content organization
@@ -46,7 +51,8 @@ The DataLandscape project integrates multiple data sources and AI capabilities:
 - **Frontend**: Next.js with TypeScript and Tailwind CSS
 - **Backend**: Next.js API routes
 - **AI Services**: Google Gemini AI, Google Custom Search API
-- **Data Sources**: ABS Data API, Google Custom Search
+- **Data Sources**: ABS Data API, Google Custom Search, Web Scraping
+- **Data Processing**: Cheerio, JSDOM for web scraping
 - **Audio**: Google Text-to-Speech API
 
 ## 📖 Usage
