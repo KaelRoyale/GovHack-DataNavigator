@@ -322,7 +322,9 @@ function SearchResultCard({ result }: { result: SearchResult }) {
           title: result.title,
           content: result.snippet + ' ' + (result.htmlSnippet || ''),
           url: result.link,
-          provider: 'openai'
+          provider: 'openai',
+          includeLinkAnalysis: true,
+          maxContentLength: 3000
         })
       })
 
@@ -630,6 +632,80 @@ function SearchResultCard({ result }: { result: SearchResult }) {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Link Analysis */}
+              {aiAnalysis.linkAnalysis && (
+                <div className="mb-4 p-3 bg-white rounded-lg border border-purple-100">
+                  <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <Link className="w-4 h-4" />
+                    Link Analysis
+                  </h5>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-gray-600">Domain:</span>
+                      <span className="ml-1 font-medium">{aiAnalysis.linkAnalysis.domain}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Credibility:</span>
+                      <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
+                        aiAnalysis.linkAnalysis.credibility === 'high' ? 'bg-green-100 text-green-800' :
+                        aiAnalysis.linkAnalysis.credibility === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {aiAnalysis.linkAnalysis.credibility}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Content Type:</span>
+                      <span className="ml-1 font-medium">{aiAnalysis.linkAnalysis.contentType}</span>
+                    </div>
+                    {aiAnalysis.linkAnalysis.lastUpdated && (
+                      <div>
+                        <span className="text-gray-600">Last Updated:</span>
+                        <span className="ml-1 font-medium">
+                          {new Date(aiAnalysis.linkAnalysis.lastUpdated).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Metadata */}
+              {aiAnalysis.metadata && (
+                <div className="mb-4 p-3 bg-white rounded-lg border border-purple-100">
+                  <h5 className="font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <Database className="w-4 h-4" />
+                    Content Metadata
+                  </h5>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-gray-600">Word Count:</span>
+                      <span className="ml-1 font-medium">{aiAnalysis.metadata.wordCount}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Reading Time:</span>
+                      <span className="ml-1 font-medium">{aiAnalysis.metadata.readingTime} min</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Language:</span>
+                      <span className="ml-1 font-medium">{aiAnalysis.metadata.language.toUpperCase()}</span>
+                    </div>
+                  </div>
+                  {aiAnalysis.metadata.topics && aiAnalysis.metadata.topics.length > 0 && (
+                    <div className="mt-2">
+                      <span className="text-gray-600 text-xs">Topics:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {aiAnalysis.metadata.topics.map((topic: string, index: number) => (
+                          <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

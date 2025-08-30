@@ -5,6 +5,8 @@ interface AnalyzeRequest {
   content: string
   url: string
   provider?: 'openai' | 'gemini'
+  includeLinkAnalysis?: boolean
+  maxContentLength?: number
 }
 
 interface AnalyzeResponse {
@@ -13,12 +15,39 @@ interface AnalyzeResponse {
   sentiment: 'positive' | 'negative' | 'neutral'
   confidence: number
   provider: string
+  linkAnalysis?: {
+    domain: string
+    credibility: 'high' | 'medium' | 'low'
+    contentType: string
+    lastUpdated?: string
+  }
+  metadata?: {
+    wordCount: number
+    readingTime: number
+    language: string
+    topics: string[]
+  }
 }
 
 export async function POST(request: NextRequest) {
+  let title = '', content = '', url = '', includeLinkAnalysis = true, maxContentLength = 3000
+  
   try {
     const body: AnalyzeRequest = await request.json()
-    const { title, content, url, provider = 'openai' } = body
+    const { 
+      title: reqTitle, 
+      content: reqContent, 
+      url: reqUrl, 
+      provider = 'openai',
+      includeLinkAnalysis: reqIncludeLinkAnalysis = true,
+      maxContentLength: reqMaxContentLength = 3000
+    } = body
+
+    title = reqTitle
+    content = reqContent
+    url = reqUrl
+    includeLinkAnalysis = reqIncludeLinkAnalysis
+    maxContentLength = reqMaxContentLength
 
     if (!title || !content) {
       return NextResponse.json(
@@ -32,13 +61,15 @@ export async function POST(request: NextRequest) {
     const geminiApiKey = process.env.GOOGLE_CLOUD_API_KEY
 
     if (!openaiApiKey && !geminiApiKey) {
-      // Return mock analysis if no API keys are configured
+      // Return enhanced mock analysis if no API keys are configured
       return NextResponse.json({
         summary: generateMockSummary(title, content),
         keyPoints: extractKeyPoints(content),
         sentiment: analyzeSentiment(content),
         confidence: 0.85,
-        provider: 'mock'
+        provider: 'mock',
+        linkAnalysis: includeLinkAnalysis ? analyzeLink(url) : undefined,
+        metadata: generateMetadata(content)
       })
     }
 
@@ -46,15 +77,15 @@ export async function POST(request: NextRequest) {
     let analysis: AnalyzeResponse
 
     if (provider === 'openai' && openaiApiKey) {
-      analysis = await analyzeWithOpenAI(title, content, openaiApiKey)
+      analysis = await analyzeWithOpenAI(title, content, url, openaiApiKey, includeLinkAnalysis, maxContentLength)
     } else if (provider === 'gemini' && geminiApiKey) {
-      analysis = await analyzeWithGemini(title, content, geminiApiKey)
+      analysis = await analyzeWithGemini(title, content, url, geminiApiKey, includeLinkAnalysis, maxContentLength)
     } else {
       // Fallback to available provider
       if (openaiApiKey) {
-        analysis = await analyzeWithOpenAI(title, content, openaiApiKey)
+        analysis = await analyzeWithOpenAI(title, content, url, openaiApiKey, includeLinkAnalysis, maxContentLength)
       } else if (geminiApiKey) {
-        analysis = await analyzeWithGemini(title, content, geminiApiKey)
+        analysis = await analyzeWithGemini(title, content, url, geminiApiKey, includeLinkAnalysis, maxContentLength)
       } else {
         throw new Error('No AI providers available')
       }
@@ -65,39 +96,59 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('AI analysis error:', error)
     
-    // Return fallback analysis
+    // Return enhanced fallback analysis
     return NextResponse.json({
       summary: 'Unable to analyze content with AI. Please try again later.',
       keyPoints: ['Analysis temporarily unavailable'],
       sentiment: 'neutral' as const,
       confidence: 0.0,
-      provider: 'fallback'
+      provider: 'fallback',
+      linkAnalysis: includeLinkAnalysis ? analyzeLink(url) : undefined,
+      metadata: generateMetadata(content)
     })
   }
 }
 
-async function analyzeWithOpenAI(title: string, content: string, apiKey: string): Promise<AnalyzeResponse> {
+async function analyzeWithOpenAI(
+  title: string, 
+  content: string, 
+  url: string, 
+  apiKey: string, 
+  includeLinkAnalysis: boolean,
+  maxContentLength: number
+): Promise<AnalyzeResponse> {
   // Validate API key format
   if (!apiKey || !apiKey.startsWith('sk-')) {
     console.error('Invalid OpenAI API key format. Key should start with "sk-"')
     throw new Error('Invalid OpenAI API key format')
   }
 
+  const truncatedContent = content.length > maxContentLength 
+    ? content.substring(0, maxContentLength) + '...'
+    : content
+
   const prompt = `
-Analyze the following article and provide:
+Analyze the following article and provide a comprehensive analysis:
+
+Article Title: ${title}
+Article URL: ${url}
+Article Content: ${truncatedContent}
+
+Please provide:
 1. A concise summary (2-3 sentences) of the main points
 2. 3-5 key points or insights
 3. Overall sentiment (positive/negative/neutral)
-
-Article Title: ${title}
-Article Content: ${content.substring(0, 2000)}...
+4. Content credibility assessment
+5. Main topics/themes discussed
 
 Please respond in JSON format:
 {
   "summary": "Brief summary here",
   "keyPoints": ["point 1", "point 2", "point 3"],
   "sentiment": "positive|negative|neutral",
-  "confidence": 0.85
+  "confidence": 0.85,
+  "credibility": "high|medium|low",
+  "topics": ["topic1", "topic2", "topic3"]
 }
 `
 
@@ -113,14 +164,14 @@ Please respond in JSON format:
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that analyzes articles and provides concise summaries with key insights.'
+            content: 'You are a helpful assistant that analyzes articles and provides comprehensive summaries with key insights, sentiment analysis, and credibility assessment. Always respond in valid JSON format.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 500,
+        max_tokens: 800,
         temperature: 0.3
       })
     })
@@ -156,7 +207,12 @@ Please respond in JSON format:
         keyPoints: analysis.keyPoints || [],
         sentiment: analysis.sentiment || 'neutral',
         confidence: analysis.confidence || 0.8,
-        provider: 'openai'
+        provider: 'openai',
+        linkAnalysis: includeLinkAnalysis ? analyzeLink(url) : undefined,
+        metadata: {
+          ...generateMetadata(content),
+          topics: analysis.topics || []
+        }
       }
     } catch (parseError) {
       console.warn('Failed to parse OpenAI JSON response, using fallback:', parseError)
@@ -166,7 +222,9 @@ Please respond in JSON format:
         keyPoints: extractKeyPoints(content),
         sentiment: analyzeSentiment(content),
         confidence: 0.7,
-        provider: 'openai'
+        provider: 'openai',
+        linkAnalysis: includeLinkAnalysis ? analyzeLink(url) : undefined,
+        metadata: generateMetadata(content)
       }
     }
   } catch (error) {
@@ -175,28 +233,46 @@ Please respond in JSON format:
   }
 }
 
-async function analyzeWithGemini(title: string, content: string, apiKey: string): Promise<AnalyzeResponse> {
+async function analyzeWithGemini(
+  title: string, 
+  content: string, 
+  url: string, 
+  apiKey: string, 
+  includeLinkAnalysis: boolean,
+  maxContentLength: number
+): Promise<AnalyzeResponse> {
   // Validate API key format
   if (!apiKey) {
     console.error('Invalid Gemini API key')
     throw new Error('Invalid Gemini API key')
   }
 
+  const truncatedContent = content.length > maxContentLength 
+    ? content.substring(0, maxContentLength) + '...'
+    : content
+
   const prompt = `
-Analyze the following article and provide:
+Analyze the following article and provide a comprehensive analysis:
+
+Article Title: ${title}
+Article URL: ${url}
+Article Content: ${truncatedContent}
+
+Please provide:
 1. A concise summary (2-3 sentences) of the main points
 2. 3-5 key points or insights
 3. Overall sentiment (positive/negative/neutral)
-
-Article Title: ${title}
-Article Content: ${content.substring(0, 2000)}...
+4. Content credibility assessment
+5. Main topics/themes discussed
 
 Please respond in JSON format:
 {
   "summary": "Brief summary here",
   "keyPoints": ["point 1", "point 2", "point 3"],
   "sentiment": "positive|negative|neutral",
-  "confidence": 0.85
+  "confidence": 0.85,
+  "credibility": "high|medium|low",
+  "topics": ["topic1", "topic2", "topic3"]
 }
 `
 
@@ -211,14 +287,14 @@ Please respond in JSON format:
           {
             parts: [
               {
-                text: `You are a helpful assistant that analyzes articles and provides concise summaries with key insights. ${prompt}`
+                text: `You are a helpful assistant that analyzes articles and provides comprehensive summaries with key insights, sentiment analysis, and credibility assessment. Always respond in valid JSON format. ${prompt}`
               }
             ]
           }
         ],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 500,
+          maxOutputTokens: 800,
           topP: 0.8,
           topK: 40
         }
@@ -256,7 +332,12 @@ Please respond in JSON format:
         keyPoints: analysis.keyPoints || [],
         sentiment: analysis.sentiment || 'neutral',
         confidence: analysis.confidence || 0.8,
-        provider: 'gemini'
+        provider: 'gemini',
+        linkAnalysis: includeLinkAnalysis ? analyzeLink(url) : undefined,
+        metadata: {
+          ...generateMetadata(content),
+          topics: analysis.topics || []
+        }
       }
     } catch (parseError) {
       console.warn('Failed to parse Gemini JSON response, using fallback:', parseError)
@@ -266,12 +347,69 @@ Please respond in JSON format:
         keyPoints: extractKeyPoints(content),
         sentiment: analyzeSentiment(content),
         confidence: 0.7,
-        provider: 'gemini'
+        provider: 'gemini',
+        linkAnalysis: includeLinkAnalysis ? analyzeLink(url) : undefined,
+        metadata: generateMetadata(content)
       }
     }
   } catch (error) {
     console.error('Gemini API call failed:', error)
     throw error
+  }
+}
+
+function analyzeLink(url: string): { domain: string; credibility: 'high' | 'medium' | 'low'; contentType: string; lastUpdated?: string } {
+  try {
+    const urlObj = new URL(url)
+    const domain = urlObj.hostname.replace('www.', '')
+    
+    // Simple domain credibility assessment
+    const credibleDomains = [
+      'abs.gov.au', 'data.gov.au', 'gov.au', 'edu.au', 'org.au',
+      'github.com', 'stackoverflow.com', 'medium.com', 'dev.to',
+      'mozilla.org', 'w3.org', 'ietf.org', 'rfc-editor.org'
+    ]
+    
+    const credibility: 'high' | 'medium' | 'low' = credibleDomains.some(d => domain.includes(d)) ? 'high' : 'medium'
+    
+    // Determine content type based on domain and path
+    let contentType = 'Article'
+    if (urlObj.pathname.includes('/docs/') || urlObj.pathname.includes('/documentation/')) {
+      contentType = 'Documentation'
+    } else if (urlObj.pathname.includes('/tutorial/') || urlObj.pathname.includes('/guide/')) {
+      contentType = 'Tutorial'
+    } else if (urlObj.pathname.includes('/dataset/') || urlObj.pathname.includes('/data/')) {
+      contentType = 'Dataset'
+    } else if (urlObj.pathname.includes('/research/') || urlObj.pathname.includes('/study/')) {
+      contentType = 'Research'
+    }
+    
+    return {
+      domain,
+      credibility,
+      contentType,
+      lastUpdated: new Date().toISOString() // Mock date
+    }
+  } catch {
+    return {
+      domain: 'unknown',
+      credibility: 'low',
+      contentType: 'Unknown',
+      lastUpdated: new Date().toISOString()
+    }
+  }
+}
+
+function generateMetadata(content: string) {
+  const wordCount = content.split(/\s+/).length
+  const readingTime = Math.ceil(wordCount / 200) // Average reading speed
+  const language = 'en' // Default to English
+  
+  return {
+    wordCount,
+    readingTime,
+    language,
+    topics: []
   }
 }
 
@@ -290,8 +428,8 @@ function extractKeyPoints(content: string): string[] {
 }
 
 function analyzeSentiment(content: string): 'positive' | 'negative' | 'neutral' {
-  const positiveWords = ['good', 'great', 'excellent', 'positive', 'success', 'improve', 'benefit', 'advantage']
-  const negativeWords = ['bad', 'poor', 'negative', 'problem', 'issue', 'fail', 'risk', 'concern']
+  const positiveWords = ['good', 'great', 'excellent', 'positive', 'success', 'improve', 'benefit', 'advantage', 'effective', 'efficient', 'innovative', 'breakthrough', 'solution', 'optimize', 'enhance']
+  const negativeWords = ['bad', 'poor', 'negative', 'problem', 'issue', 'fail', 'risk', 'concern', 'error', 'bug', 'crash', 'slow', 'expensive', 'difficult', 'complex']
   
   const lowerContent = content.toLowerCase()
   const positiveCount = positiveWords.filter(word => lowerContent.includes(word)).length
