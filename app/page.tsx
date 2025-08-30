@@ -64,7 +64,7 @@ export default function HomePage() {
     try {
       if (searchType === 'web') {
         // Perform web search with enhanced options
-        const webResponse = await fetch('http://localhost:3002/api/search', {
+        const webResponse = await fetch('/api/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -91,9 +91,9 @@ export default function HomePage() {
           setWebPagination(undefined)
         }
 
-        // Also try ABS search for related data
-        try {
-          const absResponse = await fetch('http://localhost:3002/api/abs-search', {
+                  // Also try ABS search for related data
+          try {
+            const absResponse = await fetch('/api/abs-search', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ export default function HomePage() {
         }
       } else {
         // Perform ABS search
-        const absResponse = await fetch('http://localhost:3002/api/abs-search', {
+        const absResponse = await fetch('/api/abs-search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -155,9 +155,9 @@ export default function HomePage() {
           setAbsPagination(undefined)
         }
 
-        // Also try web search for related content
-        try {
-          const webResponse = await fetch('http://localhost:3002/api/search', {
+                 // Also try web search for related content
+         try {
+           const webResponse = await fetch('/api/search', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -225,7 +225,7 @@ export default function HomePage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/search', {
+             const response = await fetch('/api/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +277,7 @@ export default function HomePage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/abs-search', {
+             const response = await fetch('/api/abs-search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

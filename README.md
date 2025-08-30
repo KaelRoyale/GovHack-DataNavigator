@@ -157,6 +157,31 @@ A powerful search platform that combines web search with official Australian Bur
 - `SearchBar` - Simple web search bar (legacy)
 - `TextToSpeech` - Audio playback functionality
 
+## 🧪 Testing
+
+The application includes comprehensive test suites located in the `tests/` directory:
+
+### Test Files
+- **API Tests**: ABS API, data ingestion, TTS functionality
+- **Integration Tests**: Link validation, CORS functionality
+- **Frontend Tests**: CORS test page for browser testing
+
+### Running Tests
+```bash
+# Start development server
+npm run dev
+
+# Run specific tests
+node tests/test-abs-api.js
+node tests/test-data-ingestion.js
+node tests/test-tts.js
+
+# Open CORS test page
+# Open tests/test-cors.html in your browser
+```
+
+See `tests/README.md` for detailed testing documentation and configuration.
+
 ## 🚀 Deployment
 
 ### **Vercel (Recommended)**
