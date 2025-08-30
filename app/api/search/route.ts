@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleCors, addCorsHeaders } from '@/lib/cors'
 
 interface SearchRequest {
   query: string
@@ -123,15 +124,20 @@ const POPULAR_SITES = [
 ]
 
 export async function POST(request: NextRequest) {
+  // Handle CORS preflight requests
+  const corsResponse = handleCors(request)
+  if (corsResponse) return corsResponse
+
   try {
     const body: SearchRequest = await request.json()
     const { query, page = 1, searchType = 'comprehensive', site, startDate, endDate } = body
 
     if (!query || typeof query !== 'string') {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Query is required and must be a string' },
         { status: 400 }
       )
+      return addCorsHeaders(response, request)
     }
 
     // Get API credentials from environment variables
@@ -140,10 +146,11 @@ export async function POST(request: NextRequest) {
 
     if (!apiKey || !searchEngineId) {
       console.error('Missing Google Custom Search API credentials')
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Search service is not configured' },
         { status: 500 }
       )
+      return addCorsHeaders(response, request)
     }
 
     // Import configuration
@@ -195,7 +202,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the enhanced search results with pagination
-    return NextResponse.json({
+    const response = NextResponse.json({
       items: paginatedResults,
       searchInformation: {
         totalResults: totalResults.toString(),
@@ -203,13 +210,15 @@ export async function POST(request: NextRequest) {
       },
       pagination
     })
+    return addCorsHeaders(response, request)
 
   } catch (error) {
     console.error('Enhanced search API error:', error)
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
+    return addCorsHeaders(response, request)
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { JSDOM } from 'jsdom'
+import { handleCors, addCorsHeaders } from '@/lib/cors'
 
 interface DatasetInfoRequest {
   url: string

@@ -40,7 +40,7 @@ A powerful search platform that combines web search with official Australian Bur
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/datalandscape-search.git
+   git clone https://github.com/KaelRoyale/GovHack-DataNavigator.git
    cd datalandscape-search
    ```
 
@@ -190,8 +190,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/datalandscape-search/issues)
-- **Documentation**: [Wiki](https://github.com/yourusername/datalandscape-search/wiki)
+- **Issues**: [GitHub Issues](https://github.com/KaelRoyale/GovHack-DataNavigator/issues)
+- **Documentation**: [Wiki](https://github.com/KaelRoyale/GovHack-DataNavigator/wiki)
 - **Demo**: [Live Demo](https://datalandscape-search.vercel.app)
 
 ---

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleCors, addCorsHeaders } from '@/lib/cors'
 
 const ABS_BASE_URL = 'https://data.api.abs.gov.au'
 const ABS_WEBSITE_BASE = 'https://www.abs.gov.au'
