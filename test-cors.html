@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test - DataLandscape API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS Test - DataLandscape API</h1>
+    <p>This page tests CORS functionality by making cross-origin requests to the DataLandscape API endpoints.</p>
+    
+    <div class="test-section">
+        <h3>Test Search API</h3>
+        <button onclick="testSearchAPI()">Test Search API</button>
+        <div id="search-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test ABS Search API</h3>
+        <button onclick="testABSSearchAPI()">Test ABS Search API</button>
+        <div id="abs-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Dataset Info API</h3>
+        <button onclick="testDatasetInfoAPI()">Test Dataset Info API</button>
+        <div id="dataset-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        async function testSearchAPI() {
+            const resultDiv = document.getElementById('search-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: 'test query',
+                        page: 1
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Search API CORS Test Passed</h4>
+                        <p>Response received successfully!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Search API CORS Test Failed</h4>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testABSSearchAPI() {
+            const resultDiv = document.getElementById('abs-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/abs-search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: 'CPI',
+                        dataflowId: 'CPI',
+                        page: 1
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ ABS Search API CORS Test Passed</h4>
+                        <p>Response received successfully!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>❌ ABS Search API CORS Test Failed</h4>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testDatasetInfoAPI() {
+            const resultDiv = document.getElementById('dataset-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/fetch-dataset-info`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: 'https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia',
+                        title: 'Consumer Price Index'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Dataset Info API CORS Test Passed</h4>
+                        <p>Response received successfully!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Dataset Info API CORS Test Failed</h4>
+                    <p>Error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -244,11 +244,11 @@ async function performEnhancedSearch(
     const dateFilter = startDate && endDate ? ` after:${startDate.split('T')[0]} before:${endDate.split('T')[0]}` : ''
     
     for (let i = 0; i < strategy.queries.length; i++) {
-      const searchQuery = strategy.queries[i].replace('{query}', query) + dateFilter
+      const searchQuery = strategy.queries[i].replace('{query}', query)
       const weight = strategy.weights[i]
       
       console.log(`Performing search ${i + 1}/${strategy.queries.length}:`, searchQuery)
-      
+       
       const results = await performGoogleSearch(
         searchQuery,
         apiKey,
@@ -337,11 +337,8 @@ async function performEnhancedSearch(
 
     // Strategy 4: Content-specific searches
     const contentQueries = [
-      `${query} filetype:pdf${dateFilter}`,
-      `${query} filetype:doc OR filetype:docx${dateFilter}`,
-      `${query} inurl:article OR inurl:post OR inurl:blog${dateFilter}`,
-      `${query} inurl:research OR inurl:study OR inurl:analysis${dateFilter}`,
-      `${query} inurl:documentation OR inurl:docs OR inurl:guide${dateFilter}`
+      `${query}`
+      
     ]
     
     for (let i = 0; i < contentQueries.length; i++) {

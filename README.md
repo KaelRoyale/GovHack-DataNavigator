@@ -79,13 +79,6 @@ A powerful search platform that combines web search with official Australian Bur
 
 ## 🔧 API Configuration
 
-### **CORS Support**
-The application includes built-in CORS (Cross-Origin Resource Sharing) support:
-- **Middleware**: Automatic CORS handling for all API routes via Next.js middleware
-- **Headers**: Pre-configured CORS headers in `next.config.js`
-- **Preflight**: Automatic handling of OPTIONS preflight requests
-- **Origins**: Allows requests from any origin (`*`) for development and production
-
 ### **Google Custom Search API**
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable Custom Search API
@@ -123,6 +116,7 @@ The application includes built-in CORS (Cross-Origin Resource Sharing) support:
 - Switch between tabs to explore different result types
 - Combine web research with official statistics
 - Use AI analysis on any content
+- **Cancel ongoing searches** by hovering over the spinning search button
 
 ## 📊 Available ABS Dataflows
 

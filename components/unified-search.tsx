@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Database, Globe, Filter, TrendingUp, Users, Building, ShoppingCart, Home, GraduationCap } from 'lucide-react'
+import { Search, Database, Globe, Filter, TrendingUp, Users, Building, ShoppingCart, Home, GraduationCap, X } from 'lucide-react'
 import DateTimePicker from './datetime-picker'
 
 interface UnifiedSearchProps {
@@ -11,6 +11,7 @@ interface UnifiedSearchProps {
     startDate?: string,
     endDate?: string 
   }) => void
+  onCancel: () => void
   isLoading: boolean
 }
 
@@ -62,7 +63,7 @@ const POPULAR_DATAFLOWS = [
 
 
 
-export default function UnifiedSearch({ onSearch, isLoading }: UnifiedSearchProps) {
+export default function UnifiedSearch({ onSearch, onCancel, isLoading }: UnifiedSearchProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchType, setSearchType] = useState<'web' | 'abs'>('web')
   const [webSearchType, setWebSearchType] = useState('comprehensive')
@@ -74,6 +75,7 @@ export default function UnifiedSearch({ onSearch, isLoading }: UnifiedSearchProp
   const [endPeriod, setEndPeriod] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [showCancelButton, setShowCancelButton] = useState(false)
 
   const handleSearch = () => {
     if (!searchQuery.trim() && !selectedDataflow) return
@@ -241,23 +243,40 @@ export default function UnifiedSearch({ onSearch, isLoading }: UnifiedSearchProp
               )}
 
               <div className="text-center">
-                <button
-                  onClick={handleSearch}
-                  disabled={!searchQuery.trim() || isLoading}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                <div 
+                  className="relative inline-block"
+                  onMouseEnter={() => isLoading && setShowCancelButton(true)}
+                  onMouseLeave={() => setShowCancelButton(false)}
                 >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4" />
-                      Start searching
-                    </>
+                  <button
+                    onClick={handleSearch}
+                    disabled={!searchQuery.trim() || isLoading}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4" />
+                        Start searching
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* Cancel button overlay */}
+                  {isLoading && showCancelButton && (
+                    <button
+                      onClick={onCancel}
+                      className="absolute inset-0 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center gap-2 justify-center"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel Search
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -371,23 +390,40 @@ export default function UnifiedSearch({ onSearch, isLoading }: UnifiedSearchProp
               )}
 
               <div className="text-center">
-                <button
-                  onClick={handleSearch}
-                  disabled={(!selectedDataflow && !searchQuery.trim()) || isLoading}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                <div 
+                  className="relative inline-block"
+                  onMouseEnter={() => isLoading && setShowCancelButton(true)}
+                  onMouseLeave={() => setShowCancelButton(false)}
                 >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="w-4 h-4" />
-                      Search ABS Data
-                    </>
+                  <button
+                    onClick={handleSearch}
+                    disabled={(!selectedDataflow && !searchQuery.trim()) || isLoading}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="w-4 h-4" />
+                        Search ABS Data
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* Cancel button overlay */}
+                  {isLoading && showCancelButton && (
+                    <button
+                      onClick={onCancel}
+                      className="absolute inset-0 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center gap-2 justify-center"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel Search
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>

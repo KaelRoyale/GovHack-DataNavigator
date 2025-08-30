@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Image from 'next/image'
 import UnifiedSearch from '@/components/unified-search'
 import UnifiedResults from '@/components/unified-results'
@@ -27,12 +27,32 @@ export default function HomePage() {
     endDate?: string
   }>({})
 
+  // AbortController for canceling requests
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  const cancelSearch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setIsLoading(false)
+    }
+  }
+
   const handleUnifiedSearch = async (query: string, searchType: 'web' | 'abs', searchOptions?: { 
     webSearchType?: string, 
     site?: string,
     startDate?: string,
     endDate?: string 
   }) => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
     setIsLoading(true)
     setHasSearched(true)
     setWebCurrentPage(1)
@@ -44,7 +64,7 @@ export default function HomePage() {
     try {
       if (searchType === 'web') {
         // Perform web search with enhanced options
-        const webResponse = await fetch('/api/search', {
+        const webResponse = await fetch('http://localhost:3002/api/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -57,6 +77,7 @@ export default function HomePage() {
             startDate: searchOptions?.startDate,
             endDate: searchOptions?.endDate
           }),
+          signal
         })
 
         if (webResponse.ok) {
@@ -72,7 +93,7 @@ export default function HomePage() {
 
         // Also try ABS search for related data
         try {
-          const absResponse = await fetch('/api/abs-search', {
+          const absResponse = await fetch('http://localhost:3002/api/abs-search', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -85,6 +106,7 @@ export default function HomePage() {
               endDate: searchOptions?.endDate,
               page: 1 
             }),
+            signal
           })
 
           if (absResponse.ok) {
@@ -95,14 +117,18 @@ export default function HomePage() {
             setAbsResults([])
             setAbsPagination(undefined)
           }
-        } catch (absError) {
+        } catch (absError: any) {
+          if (absError.name === 'AbortError') {
+            console.log('ABS search was cancelled')
+            return
+          }
           console.error('ABS search error:', absError)
           setAbsResults([])
           setAbsPagination(undefined)
         }
       } else {
         // Perform ABS search
-        const absResponse = await fetch('/api/abs-search', {
+        const absResponse = await fetch('http://localhost:3002/api/abs-search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -115,6 +141,7 @@ export default function HomePage() {
             endDate: searchOptions?.endDate,
             page: 1 
           }),
+          signal
         })
 
         if (absResponse.ok) {
@@ -130,7 +157,7 @@ export default function HomePage() {
 
         // Also try web search for related content
         try {
-          const webResponse = await fetch('/api/search', {
+          const webResponse = await fetch('http://localhost:3002/api/search', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -142,6 +169,7 @@ export default function HomePage() {
               startDate: searchOptions?.startDate,
               endDate: searchOptions?.endDate
             }),
+            signal
           })
 
           if (webResponse.ok) {
@@ -152,13 +180,21 @@ export default function HomePage() {
             setWebResults([])
             setWebPagination(undefined)
           }
-        } catch (webError) {
+        } catch (webError: any) {
+          if (webError.name === 'AbortError') {
+            console.log('Web search was cancelled')
+            return
+          }
           console.error('Web search error:', webError)
           setWebResults([])
           setWebPagination(undefined)
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Search was cancelled')
+        return
+      }
       console.error('Search error:', error)
       setWebResults([])
       setAbsResults([])
@@ -166,6 +202,7 @@ export default function HomePage() {
       setAbsPagination(undefined)
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -174,6 +211,15 @@ export default function HomePage() {
       console.error('No previous search to paginate')
       return
     }
+
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
 
     setWebCurrentPage(page)
     setIsLoading(true)
@@ -192,6 +238,7 @@ export default function HomePage() {
           startDate: lastSearchOptions.startDate,
           endDate: lastSearchOptions.endDate
         }),
+        signal
       })
 
       if (response.ok) {
@@ -199,10 +246,15 @@ export default function HomePage() {
         setWebResults(data.items || [])
         setWebPagination(data.pagination)
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Web page change was cancelled')
+        return
+      }
       console.error('Web page change error:', error)
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -211,6 +263,15 @@ export default function HomePage() {
       console.error('No previous search to paginate')
       return
     }
+
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
 
     setAbsCurrentPage(page)
     setIsLoading(true)
@@ -229,6 +290,7 @@ export default function HomePage() {
           endDate: lastSearchOptions.endDate,
           page 
         }),
+        signal
       })
 
       if (response.ok) {
@@ -236,10 +298,15 @@ export default function HomePage() {
         setAbsResults(data.items || [])
         setAbsPagination(data.pagination)
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('ABS page change was cancelled')
+        return
+      }
       console.error('ABS page change error:', error)
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -279,6 +346,7 @@ export default function HomePage() {
         {/* Unified Search Interface */}
         <UnifiedSearch 
           onSearch={handleUnifiedSearch} 
+          onCancel={cancelSearch}
           isLoading={isLoading} 
         />
 
