@@ -226,6 +226,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: [GitHub Issues](https://github.com/KaelRoyale/GovHack-DataNavigator/issues)
 - **Documentation**: [Wiki](https://github.com/KaelRoyale/GovHack-DataNavigator/wiki)
 - **Demo**: [Live Demo](https://datalandscape-search.vercel.app)
+- **Demo video**: [Demo Video](https://www.youtube.com/watch?v=w24586TdX7c)
 
 ---
 
